@@ -9,6 +9,7 @@ log.txt
 backend/venv
 backend/.env
 
+.idea/
 
 
 
