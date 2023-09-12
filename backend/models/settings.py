@@ -1,23 +1,12 @@
-from langchain.embeddings.openai import OpenAIEmbeddings
-from models.databases.supabase.supabase import SupabaseDB
+from langchain.embeddings import HuggingFaceEmbeddings
+from langchain.vectorstores import PGEmbedding
 from pydantic import BaseSettings
-from supabase.client import Client, create_client
-from vectorstore.supabase import SupabaseVectorStore
 
+CONNECTION_STRING = "postgresql+psycopg2://postgres:password@homebase-chatapp-pg:5432/pgembeddings_db"
 
-class BrainRateLimiting(BaseSettings):
-    max_brain_size: int = 52428800
-    max_brain_per_user: int = 5
+COLLECTION_NAME = "homebase-chatbot"
 
-
-class BrainSettings(BaseSettings):
-    openai_api_key: str
-    anthropic_api_key: str
-    supabase_url: str
-    supabase_service_key: str
-    pg_database_url: str = "not implemented"
-    resend_api_key: str = "null"
-    resend_email_address: str = "brain@mail.quivr.app"
+COLLECTION_ID = 'collection_id'
 
 
 class LLMSettings(BaseSettings):
@@ -25,34 +14,16 @@ class LLMSettings(BaseSettings):
     model_path: str = "./local_models/ggml-gpt4all-j-v1.3-groovy.bin"
 
 
-def get_supabase_client() -> Client:
-    settings = BrainSettings()  # pyright: ignore reportPrivateUsage=none
-    supabase_client: Client = create_client(
-        settings.supabase_url, settings.supabase_service_key
-    )
-    return supabase_client
 
-
-def get_supabase_db() -> SupabaseDB:
-    supabase_client = get_supabase_client()
-    return SupabaseDB(supabase_client)
-
-
-def get_embeddings() -> OpenAIEmbeddings:
-    settings = BrainSettings()  # pyright: ignore reportPrivateUsage=none
-    embeddings = OpenAIEmbeddings(
-        openai_api_key=settings.openai_api_key
-    )  # pyright: ignore reportPrivateUsage=none
+def get_embeddings() -> HuggingFaceEmbeddings:
+    embeddings = HuggingFaceEmbeddings()
     return embeddings
 
 
-def get_documents_vector_store() -> SupabaseVectorStore:
-    settings = BrainSettings()  # pyright: ignore reportPrivateUsage=none
-    embeddings = get_embeddings()
-    supabase_client: Client = create_client(
-        settings.supabase_url, settings.supabase_service_key
+def get_documents_vector_store():
+    db = PGEmbedding(
+        embedding_function=get_embeddings(),
+        collection_name=COLLECTION_NAME,
+        connection_string=CONNECTION_STRING
     )
-    documents_vector_store = SupabaseVectorStore(
-        supabase_client, embeddings, table_name="vectors"
-    )
-    return documents_vector_store
+    return db

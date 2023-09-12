@@ -6,9 +6,6 @@ from uuid import UUID
 from fastapi import UploadFile
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from logger import get_logger
-from models.brains import Brain
-from models.databases.supabase.supabase import SupabaseDB
-from models.settings import get_supabase_db
 from pydantic import BaseModel
 from utils.file import compute_sha1_from_file
 
@@ -29,8 +26,8 @@ class File(BaseModel):
     documents: Optional[Any] = None
 
     @property
-    def supabase_db(self) -> SupabaseDB:
-        return get_supabase_db()
+    def get_db(self):
+        return "postgresql+psycopg2://postgres:password@homebase-chatapp-pg:5432/pgembeddings_db"
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -98,7 +95,7 @@ class File(BaseModel):
         Set the vectors_ids property with the ids of the vectors
         that are associated with the file in the vectors table
         """
-        self.vectors_ids = self.supabase_db.get_vectors_by_file_sha1(
+        self.vectors_ids = self.get_db.get_vectors_by_file_sha1(
             self.file_sha1
         ).data
 
@@ -128,7 +125,7 @@ class File(BaseModel):
         Args:
             brain_id (str): Brain id
         """
-        response = self.supabase_db.get_brain_vectors_by_brain_id_and_file_sha1(
+        response = self.get_db.get_brain_vectors_by_brain_id_and_file_sha1(
             brain_id, self.file_sha1
         )
 
@@ -145,13 +142,3 @@ class File(BaseModel):
         return (
             self.file.file._file.tell() < 1  # pyright: ignore reportPrivateUsage=none
         )
-
-    def link_file_to_brain(self, brain: Brain):
-        self.set_file_vectors_ids()
-
-        if self.vectors_ids is None:
-            return
-
-        for vector_id in self.vectors_ids:  # pyright: ignore reportPrivateUsage=none
-            brain.create_brain_vector(vector_id["id"], self.file_sha1)
-        print(f"Successfully linked file {self.file_sha1} to brain {brain.id}")

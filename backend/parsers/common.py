@@ -1,7 +1,7 @@
 import time
 
 from langchain.schema import Document
-from models import Brain, File
+from models import File
 from utils.vectors import Neurons
 
 
@@ -34,7 +34,5 @@ async def process_file(
 
         created_vector_id = created_vector[0]  # pyright: ignore reportPrivateUsage=none
 
-        brain = Brain(id=brain_id)
-        brain.create_brain_vector(created_vector_id, file.file_sha1)
 
     return
